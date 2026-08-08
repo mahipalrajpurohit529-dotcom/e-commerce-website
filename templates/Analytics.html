@@ -1,0 +1,227 @@
+{% extends 'Base.html' %}
+{% block title %}Analytics Dashboard — LuxeThreads{% endblock %}
+
+{% block extra_css %}
+<style>
+.dash { padding: 2.5rem; max-width: 1400px; margin: 0 auto; }
+.dash-title { font-family: 'Playfair Display', 'Cormorant Garamond', serif; font-size: 2.5rem; font-weight: 400; margin-bottom: 2.5rem; }
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem; margin-bottom: 3rem; }
+.kpi-card { background: var(--card); border: 1px solid var(--border); padding: 1.75rem; }
+.kpi-value { font-size: 2rem; font-weight: 600; margin: .5rem 0; color: var(--accent); font-family: 'Jost', sans-serif; }
+.kpi-label { color: var(--muted); font-size: .7rem; text-transform: uppercase; letter-spacing: .16em; font-weight: 500; }
+.charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+.chart-card { background: var(--card); border: 1px solid var(--border); padding: 1.75rem; }
+.chart-card h3 { margin-bottom: 1.5rem; font-size: 1rem; font-weight: 500; color: var(--text); }
+.chart-full { grid-column: 1 / -1; }
+canvas { width: 100% !important; }
+.cluster-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-bottom: 2rem; }
+.cluster-card { padding: 1.5rem; border-left: 3px solid; background: var(--surface); }
+.cluster-card h4 { font-size: .95rem; margin-bottom: .75rem; font-weight: 500; }
+.cluster-products { font-size: .78rem; color: var(--muted); }
+.cluster-stat { font-size: 1.5rem; font-weight: 600; margin: .5rem 0; }
+.table-responsive { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+th { text-align: left; padding: .75rem 1rem; border-bottom: 2px solid var(--border); color: var(--muted); font-size:.68rem; text-transform:uppercase; letter-spacing:.12em; font-weight:500; }
+td { padding: .75rem 1rem; border-bottom: 1px solid var(--border); }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+.stock-bar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; width: 100px; display: inline-block; }
+.stock-fill { height: 100%; border-radius: 3px; }
+@media(max-width:900px){ .kpi-grid{grid-template-columns:1fr 1fr} .charts-grid{grid-template-columns:1fr} .cluster-grid{grid-template-columns:1fr} }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dash">
+    <h1 class="dash-title">Business Analytics</h1>
+
+    <!-- ── KPIs ─────────────────────────────────── -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-label">Total Revenue</div>
+            <div class="kpi-value">₹{{ "{:,.0f}".format(data.total_revenue) }}</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Total Orders</div>
+            <div class="kpi-value">{{ data.total_orders }}</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Unique Customers</div>
+            <div class="kpi-value">{{ data.total_customers }}</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Avg. Order Value</div>
+            <div class="kpi-value">₹{{ "{:,.0f}".format(data.avg_order_value) }}</div>
+        </div>
+    </div>
+
+    <!-- ── CHARTS ROW 1 ──────────────────────────── -->
+    <div class="charts-grid">
+        <div class="chart-card chart-full">
+            <h3>Monthly Revenue & Order Trends (Last 6 Months)</h3>
+            <canvas id="trendChart" height="80"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3>Category-wise Revenue</h3>
+            <canvas id="catChart"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3>Stock Status</h3>
+            <canvas id="stockChart"></canvas>
+        </div>
+    </div>
+
+    <!-- ── TOP PRODUCTS ───────────────────────────── -->
+    <div class="chart-card" style="margin-bottom:1.5rem">
+        <h3>Top 10 Products by Revenue</h3>
+        <canvas id="topProductsChart" height="90"></canvas>
+    </div>
+
+    <!-- ── K-MEANS CLUSTERING ─────────────────────── -->
+    <div class="chart-card" style="margin-bottom:1.5rem">
+        <h3>K-Means Clustering — Product Performance Segments</h3>
+        <p style="color:var(--muted); font-size:.88rem; margin-bottom:1.5rem">
+            K-Means algorithm (k=3) groups products by revenue, units sold, and stock. Clusters reveal natural performance segments.
+        </p>
+        <div class="cluster-grid">
+            {% for c in kmeans.clusters %}
+            <div class="cluster-card" style="border-color:{{ c.color }}">
+                <h4>{{ c.label }}</h4>
+                <div class="cluster-stat" style="color:{{ c.color }}">{{ c.count }} Products</div>
+                <div style="font-size:.85rem">Avg Revenue: <strong>₹{{ "{:,.0f}".format(c.avg_revenue) }}</strong></div>
+                <div style="font-size:.85rem">Avg Units Sold: <strong>{{ "%.1f"|format(c.avg_units) }}</strong></div>
+                <div class="cluster-products" style="margin-top:.75rem">
+                    Top: {{ c.products | join(', ') }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <canvas id="clusterChart" height="100"></canvas>
+    </div>
+
+    <!-- ── PERFORMER TABLES ───────────────────────── -->
+    <div class="charts-grid">
+        <div class="chart-card">
+            <h3>Best Performers</h3>
+            <div class="table-responsive">
+                <table>
+                    <thead><tr><th>Product</th><th>Units</th><th>Revenue</th></tr></thead>
+                    <tbody>
+                        {% for p in data.best_performers %}
+                        <tr>
+                            <td>{{ p.name }}</td>
+                            <td>{{ p.units_sold }}</td>
+                            <td>₹{{ "{:,.0f}".format(p.revenue) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h3>Low Performers</h3>
+            <div class="table-responsive">
+                <table>
+                    <thead><tr><th>Product</th><th>Units</th><th>Revenue</th></tr></thead>
+                    <tbody>
+                        {% for p in data.low_performers %}
+                        <tr>
+                            <td>{{ p.name }}</td>
+                            <td>{{ p.units_sold }}</td>
+                            <td>₹{{ "{:,.0f}".format(p.revenue) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+Chart.defaults.color = '#8a8278';
+Chart.defaults.borderColor = '#ddd8cf';
+
+// ── Monthly Trend ──────────────────────────────
+const trendData = {{ data.monthly_trends | tojson }};
+new Chart(document.getElementById('trendChart'), {
+    type: 'bar',
+    data: {
+        labels: trendData.map(d => d.month),
+        datasets: [
+            { label: 'Revenue (₹)', data: trendData.map(d => d.revenue), backgroundColor: '#2d4a3e', yAxisID: 'y', borderRadius: 3 },
+            { label: 'Orders', data: trendData.map(d => d.orders), type: 'line', borderColor: '#b8935a', pointBackgroundColor: '#b8935a', yAxisID: 'y1', tension: 0.4 }
+        ]
+    },
+    options: { responsive: true, scales: {
+        y: { beginAtZero: true, position: 'left', ticks: { callback: v => '₹' + v.toLocaleString() } },
+        y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false } }
+    }}
+});
+
+// ── Category ──────────────────────────────────
+const catData = {{ data.category_sales | tojson }};
+new Chart(document.getElementById('catChart'), {
+    type: 'doughnut',
+    data: {
+        labels: catData.map(d => d.category),
+        datasets: [{ data: catData.map(d => d.revenue), backgroundColor: ['#2d4a3e','#4a7a6a','#b8935a','#7a9a8a','#d4bc8a'], borderWidth: 0 }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'right' } } }
+});
+
+// ── Stock ──────────────────────────────────────
+const stock = {{ data.stock_status | tojson }};
+new Chart(document.getElementById('stockChart'), {
+    type: 'pie',
+    data: {
+        labels: ['In Stock', 'Low Stock', 'Out of Stock'],
+        datasets: [{ data: [stock.in_stock, stock.low_stock, stock.out_of_stock], backgroundColor: ['#2d6a4f','#d4840f','#c0392b'], borderWidth: 0 }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'right' } } }
+});
+
+// ── Top Products ───────────────────────────────
+const topProd = {{ data.top_products | tojson }};
+new Chart(document.getElementById('topProductsChart'), {
+    type: 'bar',
+    data: {
+        labels: topProd.map(d => d.name.length > 20 ? d.name.substring(0,20)+'…' : d.name),
+        datasets: [{ label: 'Revenue (₹)', data: topProd.map(d => d.revenue), backgroundColor: '#2d4a3e', borderRadius: 3 }]
+    },
+    options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } },
+        scales: { x: { ticks: { callback: v => '₹' + v.toLocaleString() } } } }
+});
+
+// ── K-Means Scatter ────────────────────────────
+const clusterProds = {{ kmeans.products | tojson }};
+const clusterColors = {};
+clusterProds.forEach(p => { clusterColors[p.cluster] = p.cluster_color; });
+const clusters = [...new Set(clusterProds.map(p => p.cluster))];
+const datasets = clusters.map(c => {
+    const pts = clusterProds.filter(p => p.cluster === c);
+    return {
+        label: pts[0]?.cluster_label || `Cluster ${c}`,
+        data: pts.map(p => ({ x: p.norm_rev, y: p.norm_units, name: p.name })),
+        backgroundColor: pts[0]?.cluster_color + 'cc',
+        pointRadius: 8, pointHoverRadius: 12
+    };
+});
+new Chart(document.getElementById('clusterChart'), {
+    type: 'scatter',
+    data: { datasets },
+    options: { responsive: true,
+        plugins: {
+            tooltip: { callbacks: { label: ctx => ctx.raw.name + ` (Rev: ${ctx.raw.x.toFixed(2)}, Units: ${ctx.raw.y.toFixed(2)})` } },
+            legend: { position: 'top' }
+        },
+        scales: {
+            x: { title: { display: true, text: 'Normalized Revenue →' } },
+            y: { title: { display: true, text: 'Normalized Units Sold →' } }
+        }
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Shopping Cart — LuxeThreads{% endblock %}
+{% block content %}
+<div class="page-container">
+    <h1 class="page-title">Shopping Cart</h1>
+    {% if products %}
+    <div class="cart-layout">
+        <div class="cart-items">
+            {% for item in products %}
+            <div class="cart-item">
+                <img src="{{ item.product.image_url }}" alt="{{ item.product.name }}">
+                <div class="cart-item-info">
+                    <h3>{{ item.product.name }}</h3>
+                    <span class="product-cat">{{ item.product.category.name }}</span>
+                    <div class="cart-item-price">₹{{ "%.0f"|format(item.product.price) }} × {{ item.qty }}</div>
+                </div>
+                <div class="cart-item-total">₹{{ "%.0f"|format(item.subtotal) }}</div>
+                <a href="{{ url_for('remove_from_cart', pid=item.product.id) }}" class="cart-remove">✕</a>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="cart-summary">
+            <h3>Order Summary</h3>
+            <div class="summary-row"><span>Subtotal</span><span>₹{{ "%.0f"|format(total) }}</span></div>
+            <div class="summary-row"><span>Shipping</span><span>Free</span></div>
+            <div class="summary-row summary-total"><span>Total</span><span>₹{{ "%.0f"|format(total) }}</span></div>
+            <a href="{{ url_for('checkout') }}" class="btn-primary btn-full">Proceed to Checkout</a>
+            <a href="{{ url_for('shop') }}" class="btn-outline btn-full" style="margin-top:.5rem">Continue Shopping</a>
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div style="font-size:4rem">🛍</div>
+        <h2>Your cart is empty</h2>
+        <a href="{{ url_for('shop') }}" class="btn-primary">Start Shopping</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

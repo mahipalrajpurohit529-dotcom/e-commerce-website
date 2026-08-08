@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block title %}Shop — LuxeThreads{% endblock %}
+
+{% block content %}
+<div class="shop-layout">
+
+    <!-- ── SIDEBAR ──────────────────────── -->
+    <aside class="shop-sidebar">
+        <h3>Categories</h3>
+        <ul class="cat-list">
+            <li><a href="{{ url_for('shop') }}" class="{% if not selected_category %}active{% endif %}">All</a></li>
+            {% for cat in categories %}
+            <li><a href="{{ url_for('shop') }}?category={{ cat.id }}"
+                   class="{% if selected_category and selected_category.id == cat.id %}active{% endif %}">
+                {{ cat.name }}
+            </a></li>
+            {% endfor %}
+        </ul>
+
+        <h3 style="margin-top:2rem">Sort By</h3>
+        <ul class="cat-list">
+            <li><a href="?{% if selected_category %}category={{ selected_category.id }}&{% endif %}sort=name" class="{% if sort=='name' %}active{% endif %}">Name</a></li>
+            <li><a href="?{% if selected_category %}category={{ selected_category.id }}&{% endif %}sort=price_asc" class="{% if sort=='price_asc' %}active{% endif %}">Price: Low → High</a></li>
+            <li><a href="?{% if selected_category %}category={{ selected_category.id }}&{% endif %}sort=price_desc" class="{% if sort=='price_desc' %}active{% endif %}">Price: High → Low</a></li>
+        </ul>
+    </aside>
+
+    <!-- ── MAIN ─────────────────────────── -->
+    <main class="shop-main">
+        <div class="shop-header">
+            <h2>
+                {% if selected_category %}{{ selected_category.name }}
+                {% elif search %}Results for "{{ search }}"
+                {% else %}All Products{% endif %}
+            </h2>
+            <span class="product-count">{{ products.total }} items</span>
+        </div>
+
+        <div class="products-grid">
+            {% for p in products.items %}
+            <a href="{{ url_for('product_detail', pid=p.id) }}" class="product-card">
+                <div class="product-img-wrap">
+                    <img src="{{ p.image_url }}" alt="{{ p.name }}" loading="lazy">
+                    {% if p.discount_pct > 0 %}
+                    <span class="product-badge">-{{ p.discount_pct }}%</span>
+                    {% endif %}
+                    {% if p.stock <= 10 %}
+                    <span class="product-badge product-badge-warn">Only {{ p.stock }} left</span>
+                    {% endif %}
+                </div>
+                <div class="product-info">
+                    <span class="product-cat">{{ p.category.name }}</span>
+                    <h3>{{ p.name }}</h3>
+                    <div class="product-price">
+                        ₹{{ "%.0f"|format(p.price) }}
+                        {% if p.original_price %}
+                        <s>₹{{ "%.0f"|format(p.original_price) }}</s>
+                        {% endif %}
+                    </div>
+                </div>
+            </a>
+            {% else %}
+            <p class="no-products">No products found.</p>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if products.pages > 1 %}
+        <div class="pagination">
+            {% for page_num in products.iter_pages() %}
+                {% if page_num %}
+                <a href="?page={{ page_num }}{% if selected_category %}&category={{ selected_category.id }}{% endif %}"
+                   class="{% if page_num == products.page %}active{% endif %}">{{ page_num }}</a>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}

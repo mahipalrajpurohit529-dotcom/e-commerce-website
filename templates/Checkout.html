@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}Checkout — LuxeThreads{% endblock %}
+{% block content %}
+<div class="page-container">
+    <h1 class="page-title">Checkout</h1>
+    <div class="checkout-layout">
+        <div class="checkout-form">
+            <h3>Shipping Information</h3>
+            <form method="POST">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" name="name" required placeholder="Priya Sharma">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" required placeholder="priya@example.com">
+                </div>
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="tel" name="phone" required placeholder="+91 98765 43210">
+                </div>
+                <div class="form-group">
+                    <label>Delivery Address</label>
+                    <textarea name="address" required placeholder="Full address including city and PIN code" rows="3"></textarea>
+                </div>
+                <h3 style="margin-top:2rem">Payment</h3>
+                <div class="payment-options">
+                    <label class="payment-option active"><input type="radio" name="payment" value="cod" checked> Cash on Delivery</label>
+                    <label class="payment-option"><input type="radio" name="payment" value="upi"> UPI</label>
+                    <label class="payment-option"><input type="radio" name="payment" value="card"> Card</label>
+                </div>
+                <button type="submit" class="btn-primary btn-full" style="margin-top:2rem">
+                    Place Order — ₹{{ "%.0f"|format(total) }}
+                </button>
+            </form>
+        </div>
+        <div class="checkout-summary">
+            <h3>Order Items</h3>
+            {% for item in products %}
+            <div class="checkout-item">
+                <img src="{{ item.product.image_url }}" alt="{{ item.product.name }}">
+                <div>
+                    <strong>{{ item.product.name }}</strong>
+                    <div>Qty: {{ item.qty }}</div>
+                </div>
+                <div>₹{{ "%.0f"|format(item.subtotal) }}</div>
+            </div>
+            {% endfor %}
+            <div class="summary-total" style="margin-top:1rem; padding-top:1rem; border-top: 1px solid var(--border)">
+                <span>Total</span><span>₹{{ "%.0f"|format(total) }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

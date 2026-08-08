@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block title %}{{ product.name }} — LuxeThreads{% endblock %}
+
+{% block content %}
+<div class="product-detail">
+    <div class="product-detail-img">
+        <img src="{{ product.image_url }}" alt="{{ product.name }}">
+        {% if product.discount_pct > 0 %}
+        <span class="product-badge product-badge-lg">-{{ product.discount_pct }}% OFF</span>
+        {% endif %}
+    </div>
+    <div class="product-detail-info">
+        <span class="product-cat">{{ product.category.name }}</span>
+        <h1>{{ product.name }}</h1>
+        <div class="product-price-lg">
+            ₹{{ "%.0f"|format(product.price) }}
+            {% if product.original_price %}
+            <s>₹{{ "%.0f"|format(product.original_price) }}</s>
+            <span class="saving-tag">Save ₹{{ "%.0f"|format(product.original_price - product.price) }}</span>
+            {% endif %}
+        </div>
+
+        <p class="product-desc">{{ product.description }}</p>
+
+        <form action="{{ url_for('add_to_cart', pid=product.id) }}" method="POST">
+            <!-- Size -->
+            {% if product.sizes %}
+            <div class="option-group">
+                <label>Size</label>
+                <div class="size-options">
+                    {% for size in product.sizes.split(',') %}
+                    <label class="size-btn">
+                        <input type="radio" name="size" value="{{ size.strip() }}" {% if loop.first %}checked{% endif %}>
+                        <span>{{ size.strip() }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Color -->
+            {% if product.colors %}
+            <div class="option-group">
+                <label>Color</label>
+                <div class="color-options">
+                    {% for color in product.colors.split(',') %}
+                    <label class="color-btn">
+                        <input type="radio" name="color" value="{{ color.strip() }}" {% if loop.first %}checked{% endif %}>
+                        <span>{{ color.strip() }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="qty-row">
+                <label>Qty</label>
+                <input type="number" name="qty" value="1" min="1" max="{{ product.stock }}" class="qty-input">
+            </div>
+
+            {% if product.stock > 0 %}
+            <button type="submit" class="btn-primary btn-full">Add to Cart — ₹{{ "%.0f"|format(product.price) }}</button>
+            {% else %}
+            <button type="button" class="btn-disabled btn-full" disabled>Out of Stock</button>
+            {% endif %}
+        </form>
+
+        <div class="product-meta">
+            <span class="{% if product.stock > 15 %}in-stock{% elif product.stock > 0 %}low-stock{% else %}out-stock{% endif %}">
+                {% if product.stock > 15 %}✓ In Stock
+                {% elif product.stock > 0 %}⚠ Only {{ product.stock }} left
+                {% else %}✗ Out of Stock{% endif %}
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- Related Products -->
+{% if related %}
+<section class="section">
+    <div class="section-header"><h2>You May Also Like</h2></div>
+    <div class="products-grid products-grid-4">
+        {% for p in related %}
+        <a href="{{ url_for('product_detail', pid=p.id) }}" class="product-card">
+            <div class="product-img-wrap">
+                <img src="{{ p.image_url }}" alt="{{ p.name }}" loading="lazy">
+            </div>
+            <div class="product-info">
+                <h3>{{ p.name }}</h3>
+                <div class="product-price">₹{{ "%.0f"|format(p.price) }}</div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+{% endblock %}

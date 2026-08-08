@@ -1,0 +1,98 @@
+{% extends 'Base.html' %}
+{% block title %}LuxeThreads — Contemporary Fashion{% endblock %}
+
+{% block content %}
+
+<!-- ── HERO ───────────────────────────────────── -->
+<section class="hero">
+    <div class="hero-text">
+        <span class="hero-eyebrow">New Collection 2025</span>
+        <h1>Dress With<br><em>Intention</em></h1>
+        <p>Carefully curated pieces for every chapter of your life.</p>
+        <a href="{{ url_for('shop') }}" class="btn-primary">Explore Collection</a>
+    </div>
+    <div class="hero-image">
+        <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=900" alt="Hero Fashion">
+        <div class="hero-badge">New In</div>
+    </div>
+</section>
+
+<!-- ── CATEGORIES ─────────────────────────────── -->
+<section class="section">
+    <div class="section-header">
+        <h2>Shop by Category</h2>
+    </div>
+    <div class="categories-grid">
+        {% for cat in categories %}
+        <a href="{{ url_for('shop') }}?category={{ cat.id }}" class="category-card">
+            <img src="{{ cat.image_url }}" alt="{{ cat.name }}">
+            <div class="category-overlay">
+                <span>{{ cat.name }}</span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- ── FEATURED PRODUCTS ──────────────────────── -->
+<section class="section section-dark">
+    <div class="section-header">
+        <h2>Featured Pieces</h2>
+        <a href="{{ url_for('shop') }}" class="view-all">View All →</a>
+    </div>
+    <div class="products-grid">
+        {% for p in featured %}
+        <a href="{{ url_for('product_detail', pid=p.id) }}" class="product-card">
+            <div class="product-img-wrap">
+                <img src="{{ p.image_url }}" alt="{{ p.name }}" loading="lazy">
+                {% if p.discount_pct > 0 %}
+                <span class="product-badge">-{{ p.discount_pct }}%</span>
+                {% endif %}
+                <div class="product-quick-add">Quick View</div>
+            </div>
+            <div class="product-info">
+                <span class="product-cat">{{ p.category.name }}</span>
+                <h3>{{ p.name }}</h3>
+                <div class="product-price">
+                    ₹{{ "%.0f"|format(p.price) }}
+                    {% if p.original_price %}
+                    <s>₹{{ "%.0f"|format(p.original_price) }}</s>
+                    {% endif %}
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- ── BANNER ─────────────────────────────────── -->
+<section class="banner">
+    <div class="banner-inner">
+        <h2>New Arrivals Every Week</h2>
+        <p>Stay ahead of the curve with our constantly updated collection.</p>
+        <a href="{{ url_for('shop') }}?sort=newest" class="btn-outline">Shop Now</a>
+    </div>
+</section>
+
+<!-- ── NEW ARRIVALS ───────────────────────────── -->
+<section class="section">
+    <div class="section-header">
+        <h2>Just Arrived</h2>
+    </div>
+    <div class="products-grid products-grid-4">
+        {% for p in new_arrivals %}
+        <a href="{{ url_for('product_detail', pid=p.id) }}" class="product-card">
+            <div class="product-img-wrap">
+                <img src="{{ p.image_url }}" alt="{{ p.name }}" loading="lazy">
+                <span class="product-badge product-badge-new">New</span>
+            </div>
+            <div class="product-info">
+                <h3>{{ p.name }}</h3>
+                <div class="product-price">₹{{ "%.0f"|format(p.price) }}</div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+
+{% endblock %}
