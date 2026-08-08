@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash
 from database import db, Product, Order, OrderItem, Customer, Category
 from analytics import run_kmeans_analysis, get_dashboard_data
+from logging_config import configure_logging
 import os
 from datetime import datetime
 from dotenv import load_dotenv
@@ -19,6 +20,23 @@ from flask_migrate import Migrate
 
 db.init_app(app)
 migrate = Migrate(app, db)
+logger = configure_logging(app)
+
+# ─── REQUEST / ERROR LOGGING ────────────────────────────────────
+
+@app.before_request
+def log_request_start():
+    logger.info('%s %s from %s', request.method, request.path, request.remote_addr)
+
+@app.errorhandler(404)
+def handle_404(e):
+    logger.warning('404 Not Found: %s %s', request.method, request.path)
+    return e, 404
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    logger.exception('Unhandled exception on %s %s', request.method, request.path)
+    raise e
 
 # ─── ROUTES ───────────────────────────────────────────────────
 
@@ -78,6 +96,7 @@ def add_to_cart(pid):
     cart = session.get('cart', {})
     cart[str(pid)] = cart.get(str(pid), 0) + qty
     session['cart'] = cart
+    logger.info('Added to cart: product_id=%s qty=%s', pid, qty)
     flash('Item added to cart!', 'success')
     return redirect(request.referrer or url_for('shop'))
 
@@ -86,6 +105,7 @@ def remove_from_cart(pid):
     cart = session.get('cart', {})
     cart.pop(str(pid), None)
     session['cart'] = cart
+    logger.info('Removed from cart: product_id=%s', pid)
     return redirect(url_for('cart'))
 
 @app.route('/checkout', methods=['GET', 'POST'])
@@ -105,6 +125,7 @@ def checkout():
             customer = Customer(name=name, email=email, address=address, phone=phone)
             db.session.add(customer)
             db.session.flush()
+            logger.info('New customer created: id=%s email=%s', customer.id, email)
 
         total = 0
         order_items = []
@@ -114,6 +135,8 @@ def checkout():
                 total += p.price * qty
                 order_items.append(OrderItem(product_id=p.id, quantity=qty, price=p.price))
                 p.stock = max(0, p.stock - qty)
+            else:
+                logger.warning('Checkout skipped missing product_id=%s', pid)
 
         order = Order(customer_id=customer.id, total=total,
                       status='confirmed', order_date=datetime.utcnow())
@@ -126,6 +149,8 @@ def checkout():
 
         db.session.commit()
         session.pop('cart', None)
+        logger.info('Order placed: order_id=%s customer_id=%s total=%s items=%s',
+                    order.id, customer.id, total, len(order_items))
         flash(f'Order #{order.id} placed successfully!', 'success')
         return redirect(url_for('order_confirmation', oid=order.id))
 
@@ -175,4 +200,6 @@ if __name__ == '__main__':
         if Product.query.count() == 0:
             from seed_data import seed_database
             seed_database()
+            logger.info('Database seeded with sample data')
+    logger.info('Starting LuxeThreads app')
     app.run(debug=True)
