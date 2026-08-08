@@ -3,13 +3,22 @@ from database import db, Product, Order, OrderItem, Customer, Category
 from analytics import run_kmeans_analysis, get_dashboard_data
 import os
 from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:root@localhost:3306/luxethreads_db'
+basedir = os.path.abspath(os.path.dirname(__file__))
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
+    'DATABASE_URL', f"sqlite:///{os.path.join(basedir, 'instance', 'luxethreads.db')}"
+)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'luxethreads-secret-2024'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-only-change-me')
+
+from flask_migrate import Migrate
 
 db.init_app(app)
+migrate = Migrate(app, db)
 
 # ─── ROUTES ───────────────────────────────────────────────────
 

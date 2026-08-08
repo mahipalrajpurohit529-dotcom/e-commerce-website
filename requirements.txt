@@ -2,3 +2,5 @@ flask==3.0.3
 flask-sqlalchemy==3.1.1
 pymysql
 cryptography
+python-dotenv
+Flask-Migrate
