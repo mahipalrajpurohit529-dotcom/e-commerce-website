@@ -1,6 +1,9 @@
-from database import db, Category, Product, Customer, Order, OrderItem
+import logging
+from database import db, Category, Product, Customer, Order, OrderItem, Vendor
 from datetime import datetime, timedelta
 import random
+
+logger = logging.getLogger('app')
 
 def seed_database():
     # ── Categories ──────────────────────────────────
@@ -17,6 +20,21 @@ def seed_database():
         db.session.add(cat)
         db.session.flush()
         cats[c['slug']] = cat
+
+    # ── Vendors ──────────────────────────────────────
+    vendors_data = [
+        {'name': 'Aura Studio', 'email': 'partnerships@aurastudio.com', 'phone': '9811100001', 'commission_rate': 15.0},
+        {'name': 'Northline Apparel', 'email': 'vendor@northlineapparel.com', 'phone': '9811100002', 'commission_rate': 18.0},
+        {'name': 'Coastal Craft Co.', 'email': 'hello@coastalcraftco.com', 'phone': '9811100003', 'commission_rate': 12.0},
+        {'name': 'Bramble & Bark', 'email': 'sales@brambleandbark.com', 'phone': '9811100004', 'commission_rate': 20.0},
+        {'name': 'Ironwood Supply', 'email': 'contact@ironwoodsupply.com', 'phone': '9811100005', 'commission_rate': 15.0},
+    ]
+    vendors = []
+    for vd in vendors_data:
+        v = Vendor(**vd)
+        db.session.add(v)
+        db.session.flush()
+        vendors.append(v)
 
     # ── Products ──────────────────────────────────
     products_data = [
@@ -111,9 +129,10 @@ def seed_database():
     ]
 
     products = []
-    for pd in products_data:
+    for i, pd in enumerate(products_data):
         cat = cats[pd.pop('category')]
-        p = Product(category_id=cat.id, **pd)
+        vendor = vendors[i % len(vendors)]  # round-robin assign vendors across products
+        p = Product(category_id=cat.id, vendor_id=vendor.id, **pd)
         db.session.add(p)
         db.session.flush()
         products.append(p)
@@ -160,18 +179,26 @@ def seed_database():
         chosen_products = random.choices(products, weights=product_probs, k=num_items)
         chosen_products = list(set(chosen_products))  # deduplicate
 
-        order = Order(customer_id=customer.id, total=0, status=status, order_date=order_date)
+        order = Order(customer_id=customer.id, total=0, status=status, order_date=order_date,
+                      payment_status='paid', channel='web')
         db.session.add(order)
         db.session.flush()
 
         total = 0
         for p in chosen_products:
             qty = random.randint(1, 3)
-            item = OrderItem(order_id=order.id, product_id=p.id, quantity=qty, price=p.price)
+            line_total = qty * p.price
+            vendor = p.vendor  # backref set via vendor_id on the product
+            commission = line_total * (vendor.commission_rate / 100.0) if vendor else 0
+            payout = round(line_total - commission, 2)
+
+            item = OrderItem(order_id=order.id, product_id=p.id, quantity=qty, price=p.price,
+                             vendor_id=p.vendor_id, vendor_payout=payout)
             db.session.add(item)
-            total += qty * p.price
+            total += line_total
 
         order.total = total
 
     db.session.commit()
-    print(f"Seeded: {len(products)} products, {len(customers)} customers, 220 orders across 6 months.")
+    logger.info('Seeded: %s products, %s vendors, %s customers, 220 orders across 6 months.',
+                len(products), len(vendors), len(customers))

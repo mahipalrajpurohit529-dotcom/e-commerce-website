@@ -36,6 +36,7 @@ class Vendor(db.Model):
     commission_rate = db.Column(db.Float, nullable=False, default=15.0)  # percentage, e.g. 15.0 = 15%
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     products = db.relationship('Product', backref='vendor', lazy=True)
+    order_items = db.relationship('OrderItem', backref='vendor', lazy=True)
 
     def __repr__(self):
         return f'<Vendor {self.name}>'
