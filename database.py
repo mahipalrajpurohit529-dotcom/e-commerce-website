@@ -1,7 +1,19 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+from sqlalchemy import MetaData
 
-db = SQLAlchemy()
+# Naming convention so Alembic auto-generates constraint names instead of
+# leaving them unnamed (SQLite's batch-mode ALTER TABLE requires named
+# constraints, and we hit "Constraint must have a name" without this).
+naming_convention = {
+    "ix": "ix_%(column_0_label)s",
+    "uq": "uq_%(table_name)s_%(column_0_name)s",
+    "ck": "ck_%(table_name)s_%(constraint_name)s",
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s"
+}
+metadata = MetaData(naming_convention=naming_convention)
+db = SQLAlchemy(metadata=metadata)
 
 class Category(db.Model):
     __tablename__ = 'categories'
@@ -14,6 +26,21 @@ class Category(db.Model):
     def __repr__(self):
         return f'<Category {self.name}>'
 
+
+class Vendor(db.Model):
+    __tablename__ = 'vendors'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), nullable=False)
+    email = db.Column(db.String(150), unique=True, nullable=False)
+    phone = db.Column(db.String(20))
+    commission_rate = db.Column(db.Float, nullable=False, default=15.0)  # percentage, e.g. 15.0 = 15%
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    products = db.relationship('Product', backref='vendor', lazy=True)
+
+    def __repr__(self):
+        return f'<Vendor {self.name}>'
+
+
 class Product(db.Model):
     __tablename__ = 'products'
     id = db.Column(db.Integer, primary_key=True)
@@ -23,6 +50,7 @@ class Product(db.Model):
     original_price = db.Column(db.Float)
     stock = db.Column(db.Integer, default=50)
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=False)
+    vendor_id = db.Column(db.Integer, db.ForeignKey('vendors.id'), nullable=True)
     image_url = db.Column(db.String(300))
     featured = db.Column(db.Boolean, default=False)
     sizes = db.Column(db.String(200), default='XS,S,M,L,XL')
@@ -54,6 +82,8 @@ class Customer(db.Model):
     email = db.Column(db.String(150), unique=True, nullable=False)
     phone = db.Column(db.String(20))
     address = db.Column(db.Text)
+    whatsapp_number = db.Column(db.String(20))
+    instagram_id = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     orders = db.relationship('Order', backref='customer', lazy=True)
 
@@ -66,6 +96,9 @@ class Order(db.Model):
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False)
     total = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(50), default='pending')  # pending, confirmed, shipped, delivered
+    payment_status = db.Column(db.String(50), default='unpaid')  # unpaid, paid, failed, refunded
+    payment_id = db.Column(db.String(150))  # Razorpay payment ID, set on webhook confirmation
+    channel = db.Column(db.String(50), default='web')  # web, whatsapp, instagram
     order_date = db.Column(db.DateTime, default=datetime.utcnow)
     items = db.relationship('OrderItem', backref='order', lazy=True)
 
@@ -79,3 +112,5 @@ class OrderItem(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
     price = db.Column(db.Float, nullable=False)  # price at time of purchase
+    vendor_id = db.Column(db.Integer, db.ForeignKey('vendors.id'), nullable=True)
+    vendor_payout = db.Column(db.Float, nullable=True)  # price*qty minus platform commission
