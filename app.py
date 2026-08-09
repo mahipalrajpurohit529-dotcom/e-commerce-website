@@ -132,8 +132,13 @@ def checkout():
         for pid, qty in cart_items.items():
             p = Product.query.get(int(pid))
             if p:
-                total += p.price * qty
-                order_items.append(OrderItem(product_id=p.id, quantity=qty, price=p.price))
+                line_total = p.price * qty
+                total += line_total
+                vendor = p.vendor
+                commission = line_total * (vendor.commission_rate / 100.0) if vendor else 0
+                payout = round(line_total - commission, 2)
+                order_items.append(OrderItem(product_id=p.id, quantity=qty, price=p.price,
+                                              vendor_id=p.vendor_id, vendor_payout=payout))
                 p.stock = max(0, p.stock - qty)
             else:
                 logger.warning('Checkout skipped missing product_id=%s', pid)
