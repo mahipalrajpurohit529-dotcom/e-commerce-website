@@ -207,4 +207,5 @@ if __name__ == '__main__':
             seed_database()
             logger.info('Database seeded with sample data')
     logger.info('Starting LuxeThreads app')
+    logger.info('Running on http://127.0.0.1:5000 (Press CTRL+C to quit)')
     app.run(debug=True)
